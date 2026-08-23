@@ -30,8 +30,6 @@ class FighterState:
 @dataclass
 class GameState:
     tick: int
-    fighters:tuple[FighterState, FighterState]
+    fighters: tuple[FighterState, FighterState]
     rng: random.Random
-    result:None|int
-
-
+    result: None | int

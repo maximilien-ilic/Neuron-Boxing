@@ -1,7 +1,8 @@
-from sim.state import FighterState, GameState
-from sim import constants as c
-import random
 import math
+import random
+
+from sim import constants as c
+from sim.state import FighterState, GameState
 
 #TUPLE STEP DEPLACEMENT
 
@@ -19,6 +20,8 @@ MOVES = (
     (0.0, 0.0),                                      # 9 : frapper
 )
 
+MIN_POS = c.BODY_RADIUS
+MAX_POS = c.RING_SIZE - c.BODY_RADIUS
 
 
 
@@ -55,13 +58,61 @@ def step(state: GameState, action0: int, action1: int) -> GameState:
     before_f0_y = f0.y
     before_f1_x = f1.x
     before_f1_y = f1.y
-    f0.x = max(c.BODY_RADIUS, min(f0.x + move_x0, c.RING_SIZE - c.BODY_RADIUS))
-    f0.y = max(c.BODY_RADIUS, min(f0.y + move_y0, c.RING_SIZE - c.BODY_RADIUS))
-    f1.x = max(c.BODY_RADIUS, min(f1.x + move_x1, c.RING_SIZE - c.BODY_RADIUS))
-    f1.y = max(c.BODY_RADIUS, min(f1.y + move_y1, c.RING_SIZE - c.BODY_RADIUS))
+    f0.x = max(MIN_POS, min(f0.x + move_x0,MAX_POS ))
+    f0.y = max(MIN_POS, min(f0.y + move_y0, MAX_POS))
+    f1.x = max(MIN_POS, min(f1.x + move_x1, MAX_POS))
+    f1.y = max(MIN_POS, min(f1.y + move_y1, MAX_POS))
     f0.vx = f0.x - before_f0_x
     f0.vy = f0.y - before_f0_y
     f1.vx = f1.x - before_f1_x
     f1.vy = f1.y - before_f1_y
+    # 4. Résoudre la collision entre les deux corps
+    ecart_x = f0.x - f1.x
+    ecart_y = f0.y - f1.y
+    hypo = math.hypot(ecart_x,ecart_y)
+    if  hypo < c.MIN_SEPARATION and hypo > 1e-9:
+        repoussement = (c.MIN_SEPARATION - hypo) / 2
+        f0.x = f0.x + (ecart_x / hypo) * repoussement
+        f1.x = f1.x - (ecart_x / hypo) * repoussement
+        f0.y = f0.y + (ecart_y / hypo) * repoussement
+        f1.y = f1.y - (ecart_y / hypo) * repoussement
+        f0.x = max(MIN_POS, min(f0.x, MAX_POS))
+        f0.y = max(MIN_POS, min(f0.y, MAX_POS))
+        f1.x = max(MIN_POS, min(f1.x, MAX_POS))
+        f1.y = max(MIN_POS, min(f1.y, MAX_POS))
+    # 5. Déclencher les nouveaux coups
+    if action0 == c.ACTION_PUNCH and f0.is_ready:
+        f0.punch_timer = c.PUNCH_CYCLE
+    if action1 == c.ACTION_PUNCH and f1.is_ready:
+        f1.punch_timer = c.PUNCH_CYCLE
+    # 6. Résoudre les dégâts
+    ecart_x_coli = f0.x - f1.x
+    ecart_y_coli = f0.y - f1.y
+    hypo = math.hypot(ecart_x_coli, ecart_y_coli)
+    f0_touch = f0.punch_timer == c.WINDUP_END and hypo <= c.PUNCH_RANGE
+    f1_touch = f1.punch_timer == c.WINDUP_END and hypo <= c.PUNCH_RANGE
+    if f0_touch:
+        f1.hp = f1.hp - c.PUNCH_DAMAGE
+        f0.touches_scored = f0.touches_scored + 1
+    if f1_touch:
+        f0.hp = f0.hp - c.PUNCH_DAMAGE
+        f1.touches_scored = f1.touches_scored + 1
+    # 7. Vérifier les conditions de fin
+    if f0.hp <= 0 and f1.hp <= 0:
+        state.result = c.RESULT_DRAW
+    elif f0.hp <= 0 and f1.hp > 0:
+        state.result = c.RESULT_P1_WINS
+    elif f1.hp <= 0 and f0.hp > 0:
+        state.result = c.RESULT_P0_WINS
+    elif c.MAX_TICKS >= state.tick :
+        if f0.touches_scored > f1.touches_scored:
+            state.result = c.RESULT_P0_WINS
+        elif f1.touches_scored > f0.touches_scored:
+            state.result = c.RESULT_P1_WINS
+        else:
+            state.result = c.RESULT_DRAW
+    # 8. Avancer le tick
+    state.tick = state.tick + 1
+
     return state
 

@@ -104,7 +104,7 @@ def step(state: GameState, action0: int, action1: int) -> GameState:
         state.result = c.RESULT_P1_WINS
     elif f1.hp <= 0 and f0.hp > 0:
         state.result = c.RESULT_P0_WINS
-    elif c.MAX_TICKS >= state.tick :
+    elif c.MAX_TICKS <= state.tick :
         if f0.touches_scored > f1.touches_scored:
             state.result = c.RESULT_P0_WINS
         elif f1.touches_scored > f0.touches_scored:

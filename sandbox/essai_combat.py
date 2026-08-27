@@ -1,7 +1,7 @@
 from sim import rules as r
 
 
-def test_combat():
+def essai_combat():
     state = r.initial_state(42)
     state.fighters[0].x = 1
     state.fighters[1].x = 2
@@ -11,4 +11,4 @@ def test_combat():
         r.step(state,9,9)
     print(state)
 
-test_combat()
+essai_combat()
